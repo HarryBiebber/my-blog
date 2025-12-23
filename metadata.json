@@ -1,0 +1,9 @@
+{
+  "name": "个人博客 | JUST CREATE IT",
+  "description": "极简风格个人博客，分享生活、知识与AI创意。",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
