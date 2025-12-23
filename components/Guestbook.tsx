@@ -68,8 +68,11 @@ const Guestbook: React.FC = () => {
     setMessageContent('');
   };
 
-  const handleDelete = (id: string) => {
-      // Ensure we have correct ID
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+      // FIX: Stop propagation
+      e.preventDefault();
+      e.stopPropagation();
+
       if(window.confirm("确定删除这条留言吗？")) {
           const updated = entries.filter(e => e.id !== id);
           saveEntries(updated);
@@ -154,14 +157,14 @@ const Guestbook: React.FC = () => {
       <div className="space-y-8">
         {entries.map(entry => (
             <div key={entry.id} className="relative bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-                {/* Delete Button (Only Admin) */}
+                {/* Delete Button (Only Admin) - FIXED Z-INDEX and Click */}
                 {isAdmin && (
                     <button 
-                        onClick={() => handleDelete(entry.id)}
-                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2"
+                        onClick={(e) => handleDelete(entry.id, e)}
+                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-100 p-2 z-50 cursor-pointer"
                         title="删除留言"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 )}
 

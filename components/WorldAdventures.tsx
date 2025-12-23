@@ -3,16 +3,18 @@ import { adventureAlbums as initialMockData } from '../data/mockData';
 import { Album } from '../types';
 import { fileToBase64 } from '../utils/audioUtils';
 
-// 👇👇👇 闯荡世界 顶部背景视频 👇👇👇
-const WORLD_HERO_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4";
+const DEFAULT_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4";
 
 const WorldAdventures: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [localLikes, setLocalLikes] = useState<Record<string, number>>({});
   
-  // Admin Check
+  // Admin & Config
   const [isAdmin, setIsAdmin] = useState(false);
+  const [heroVideo, setHeroVideo] = useState(DEFAULT_VIDEO);
+  const [isEditingHero, setIsEditingHero] = useState(false);
+  const [newHeroUrl, setNewHeroUrl] = useState('');
 
   // Lightbox
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -25,7 +27,6 @@ const WorldAdventures: React.FC = () => {
   const [newCover, setNewCover] = useState<string | null>(null);
   const [newImages, setNewImages] = useState<string[]>([]);
 
-  // Initialize data
   useEffect(() => {
       const checkAdmin = () => {
           setIsAdmin(localStorage.getItem('IS_ADMIN') === 'true');
@@ -40,6 +41,9 @@ const WorldAdventures: React.FC = () => {
           setAlbums(initialMockData);
       }
 
+      const savedVideo = localStorage.getItem('site_config_world_video');
+      if (savedVideo) setHeroVideo(savedVideo);
+
       return () => {
           window.removeEventListener('adminChange', checkAdmin);
       };
@@ -48,6 +52,14 @@ const WorldAdventures: React.FC = () => {
   const saveAlbums = (updated: Album[]) => {
       setAlbums(updated);
       localStorage.setItem('world_albums', JSON.stringify(updated));
+  };
+
+  const handleSaveHero = () => {
+      if(newHeroUrl) {
+          setHeroVideo(newHeroUrl);
+          localStorage.setItem('site_config_world_video', newHeroUrl);
+      }
+      setIsEditingHero(false);
   };
 
   const getLikes = (album: Album) => {
@@ -70,8 +82,10 @@ const WorldAdventures: React.FC = () => {
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
+      e.preventDefault();
       e.stopPropagation();
-      if(window.confirm("确定删除这个旅程吗？")) {
+      
+      if(window.confirm("【管理员操作】\n确定删除这个旅程吗？此操作无法撤销。")) {
           const updated = albums.filter(a => a.id !== id);
           saveAlbums(updated);
           if (selectedAlbum?.id === id) {
@@ -97,10 +111,7 @@ const WorldAdventures: React.FC = () => {
       }
   };
 
-  // Helper to detect if source is video
-  const isVideo = (src: string) => {
-      return src.startsWith('data:video') || src.toLowerCase().endsWith('.mp4');
-  };
+  const isVideo = (src: string) => src.startsWith('data:video') || src.toLowerCase().endsWith('.mp4');
 
   const handleAddAlbum = () => {
       if (!newTitle || !newLocation || !newCover) return;
@@ -133,16 +144,10 @@ const WorldAdventures: React.FC = () => {
         )}
 
         <div className="max-w-[1440px] mx-auto px-6 py-12">
-            {/* Back Button */}
-            <button 
-                onClick={() => setSelectedAlbum(null)}
-                className="flex items-center text-sm font-bold uppercase tracking-wide mb-8 text-gray-400 hover:text-white"
-            >
+            <button onClick={() => setSelectedAlbum(null)} className="flex items-center text-sm font-bold uppercase tracking-wide mb-8 text-gray-400 hover:text-white">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 返回列表
             </button>
-
-            {/* Album Header */}
             <div className="mb-12 border-b border-gray-800 pb-8">
                 <div className="flex items-center space-x-3 text-gray-400 font-bold uppercase text-xs mb-2">
                     <span className="bg-white text-black px-1 rounded-sm">{selectedAlbum.date}</span>
@@ -151,29 +156,10 @@ const WorldAdventures: React.FC = () => {
                 <h1 className="text-4xl md:text-7xl font-black uppercase tracking-tighter mb-4">{selectedAlbum.title}</h1>
                 <p className="text-gray-400 text-lg max-w-3xl">{selectedAlbum.description}</p>
             </div>
-
-            {/* Cinematic Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                 {selectedAlbum.images.map((img, idx) => (
                     <div key={idx} className={`relative group overflow-hidden ${idx % 3 === 0 ? 'md:col-span-2 aspect-video' : 'aspect-square'}`}>
-                        {isVideo(img) ? (
-                            <video 
-                                src={img} 
-                                muted
-                                loop
-                                onMouseOver={e => e.currentTarget.play()}
-                                onMouseOut={e => e.currentTarget.pause()}
-                                onClick={() => setLightboxImg(img)}
-                                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 cursor-zoom-in"
-                            />
-                        ) : (
-                            <img 
-                                src={img} 
-                                alt={`Gallery ${idx}`} 
-                                onClick={() => setLightboxImg(img)}
-                                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 cursor-zoom-in"
-                            />
-                        )}
+                        {isVideo(img) ? <video src={img} muted loop onClick={() => setLightboxImg(img)} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 cursor-zoom-in"/> : <img src={img} alt={`Gallery ${idx}`} onClick={() => setLightboxImg(img)} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 cursor-zoom-in"/>}
                     </div>
                 ))}
             </div>
@@ -184,39 +170,46 @@ const WorldAdventures: React.FC = () => {
 
   return (
     <div className="w-full animate-fade-in">
-      {/* Header - Inverse Style with Video Background */}
-      <div className="relative h-[50vh] flex flex-col justify-center items-center text-center overflow-hidden rounded-b-[3rem]">
+      {/* Hero */}
+      <div className="relative h-[50vh] flex flex-col justify-center items-center text-center overflow-hidden rounded-b-[3rem] group">
          <div className="absolute inset-0 z-0">
-             <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline
-                className="w-full h-full object-cover opacity-50"
-             >
-                <source src={WORLD_HERO_VIDEO} type="video/mp4" />
-             </video>
+             <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-50" src={heroVideo} key={heroVideo} />
              <div className="absolute inset-0 bg-black/60"></div>
         </div>
         
+        {isAdmin && (
+             <button onClick={() => setIsEditingHero(true)} className="absolute top-4 right-4 z-50 bg-white text-black px-4 py-2 rounded-full font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                 更换背景视频
+             </button>
+        )}
+
         <div className="relative z-10 max-w-2xl mx-auto px-6">
             <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-4 text-white">闯荡世界</h1>
-            <p className="text-gray-200 font-medium text-lg">
-            世界那么大，我想去看看。记录每一次出发与抵达。
-            </p>
+            <p className="text-gray-200 font-medium text-lg">世界那么大，我想去看看。记录每一次出发与抵达。</p>
         </div>
       </div>
 
-       {/* Toolbar (Admin Only) */}
+       {/* Hero Edit Modal */}
+       {isEditingHero && (
+           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-black">
+               <div className="bg-white p-6 rounded-2xl w-full max-w-md">
+                   <h3 className="text-xl font-bold mb-4">更换背景视频</h3>
+                   <p className="text-xs text-gray-500 mb-2">请输入 .mp4 视频链接</p>
+                   <input value={newHeroUrl} onChange={e => setNewHeroUrl(e.target.value)} placeholder="https://..." className="w-full p-3 bg-gray-100 rounded-lg mb-4" />
+                   <div className="flex justify-end gap-2">
+                       <button onClick={() => setIsEditingHero(false)} className="px-4 py-2 text-gray-500">取消</button>
+                       <button onClick={handleSaveHero} className="px-4 py-2 bg-black text-white rounded-lg font-bold">保存</button>
+                   </div>
+               </div>
+           </div>
+       )}
+
+       {/* Toolbar */}
        {isAdmin && (
         <div className="max-w-[1440px] mx-auto px-6 mt-8 flex justify-end">
-            <button 
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center space-x-2 bg-white text-black border border-gray-200 px-6 py-3 rounded-full font-bold hover:bg-black hover:text-white transition-all shadow-md"
-                >
-                    <span className="text-xl leading-none mb-0.5">+</span>
-                    <span>新增旅程</span>
-                </button>
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center space-x-2 bg-white text-black border border-gray-200 px-6 py-3 rounded-full font-bold hover:bg-black hover:text-white transition-all shadow-md">
+                <span className="text-xl leading-none mb-0.5">+</span><span>新增旅程</span>
+            </button>
         </div>
        )}
 
@@ -224,55 +217,43 @@ const WorldAdventures: React.FC = () => {
       <div className="max-w-[1440px] mx-auto px-6 mt-8 mb-24">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {albums.map((item) => (
-            <div key={item.id} onClick={() => setSelectedAlbum(item)} className="group cursor-pointer relative h-[500px] overflow-hidden rounded-3xl">
-               <img 
-                  src={item.coverUrl} 
-                  alt={item.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 rounded-3xl" 
-               />
-               
-               {/* Overlay Gradient */}
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 rounded-3xl"></div>
-
-                {/* Delete Button (Admin Only) */}
-                 {isAdmin && (
+            <div key={item.id} className="relative group">
+               {/* DELETE BUTTON: MOVED OUTSIDE CLICKABLE AREA */}
+               {isAdmin && (
                     <button 
                         onClick={(e) => handleDelete(item.id, e)}
-                        className="absolute top-4 left-4 z-20 bg-black/50 backdrop-blur text-white p-2 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+                        className="absolute top-2 left-2 z-50 bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-xl hover:bg-red-700 hover:scale-110 transition-all border-2 border-white cursor-pointer"
                         title="删除旅程"
+                        type="button"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                  )}
 
-               {/* Like Button */}
-               <button 
-                  onClick={(e) => handleLike(item.id, e)}
-                  className="absolute top-4 right-4 bg-black/50 backdrop-blur-md p-2 rounded-full hover:bg-white hover:text-red-500 text-white transition-colors z-20"
-               >
-                  <div className="flex items-center space-x-1 px-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                      <span className="text-xs font-bold">{getLikes(item)}</span>
-                  </div>
-               </button>
+               <div onClick={() => setSelectedAlbum(item)} className="cursor-pointer">
+                  <div className="relative h-[500px] overflow-hidden rounded-3xl">
+                        <img src={item.coverUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 rounded-3xl"></div>
 
-               {/* Content */}
-               <div className="absolute bottom-0 left-0 p-6 w-full text-white">
-                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase bg-white text-black px-2 py-1 rounded-sm">
-                        {item.date}
-                    </span>
-                    <span className="text-xs font-bold uppercase border border-white/30 px-2 py-1 rounded-sm">
-                        {item.images.length} 媒体
-                    </span>
-                 </div>
-                 <h3 className="text-2xl font-black uppercase mb-1">{item.title}</h3>
-                 <div className="flex items-center text-sm font-medium text-gray-300 mb-2">
-                    <span className="mr-2">📍</span> {item.location}
-                 </div>
-                 <p className="text-gray-400 text-sm line-clamp-2 group-hover:text-white transition-colors">
-                    {item.description}
-                 </p>
+                        <button onClick={(e) => handleLike(item.id, e)} className="absolute top-4 right-4 bg-black/50 backdrop-blur-md p-2 rounded-full hover:bg-white hover:text-red-500 text-white transition-colors z-20">
+                            <div className="flex items-center space-x-1 px-1">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                                <span className="text-xs font-bold">{getLikes(item)}</span>
+                            </div>
+                        </button>
+
+                        <div className="absolute bottom-0 left-0 p-6 w-full text-white">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold uppercase bg-white text-black px-2 py-1 rounded-sm">{item.date}</span>
+                                <span className="text-xs font-bold uppercase border border-white/30 px-2 py-1 rounded-sm">{item.images.length} 媒体</span>
+                            </div>
+                            <h3 className="text-2xl font-black uppercase mb-1">{item.title}</h3>
+                            <div className="flex items-center text-sm font-medium text-gray-300 mb-2">
+                                <span className="mr-2">📍</span> {item.location}
+                            </div>
+                            <p className="text-gray-400 text-sm line-clamp-2 group-hover:text-white transition-colors">{item.description}</p>
+                        </div>
+                   </div>
                </div>
             </div>
           ))}
