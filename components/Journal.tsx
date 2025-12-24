@@ -3,15 +3,10 @@ import { Link } from 'react-router-dom';
 import { campusAlbums, adventureAlbums } from '../data/mockData';
 import { Album, KnowledgeItem } from '../types';
 
-// ============================================================================
-// 👇👇👇 个人介绍视频 & 封面 👇👇👇
-const MY_INTRO_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-// 视频未播放时显示的封面图
-const MY_INTRO_POSTER = "https://picsum.photos/seed/intro_poster/1920/1080"; 
-
-// 👇👇👇 首页背景循环视频 (静音) 👇👇👇
-const HERO_BG_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-// ============================================================================
+// 默认视频和封面
+const DEFAULT_INTRO_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+const DEFAULT_INTRO_POSTER = "https://picsum.photos/seed/intro_poster/1920/1080";
+const DEFAULT_HERO_BG_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4";
 
 // Helper type for the unified feed
 type FeedItem = 
@@ -24,16 +19,44 @@ const Journal: React.FC = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
+  // Custom Config State (Intro Video)
+  const [introVideoUrl, setIntroVideoUrl] = useState(DEFAULT_INTRO_VIDEO);
+  const [introPosterUrl, setIntroPosterUrl] = useState(DEFAULT_INTRO_POSTER);
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  
+  // Custom Config State (Hero Background)
+  const [heroBgVideo, setHeroBgVideo] = useState(DEFAULT_HERO_BG_VIDEO);
+  const [isEditingHero, setIsEditingHero] = useState(false);
+  
+  // Temp state for editing
+  const [tempVideoUrl, setTempVideoUrl] = useState('');
+  const [tempPosterUrl, setTempPosterUrl] = useState('');
+  const [newHeroUrl, setNewHeroUrl] = useState('');
+
   // Lightbox State
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Load and merge data
+  // Load data & config
   useEffect(() => {
+    // Check Admin
+    const checkAdmin = () => setIsAdmin(localStorage.getItem('IS_ADMIN') === 'true');
+    checkAdmin();
+    window.addEventListener('adminChange', checkAdmin);
+
+    // Load Config
+    const savedVideo = localStorage.getItem('site_intro_video');
+    const savedPoster = localStorage.getItem('site_intro_poster');
+    const savedHeroBg = localStorage.getItem('site_config_journal_hero');
+
+    if (savedVideo) setIntroVideoUrl(savedVideo);
+    if (savedPoster) setIntroPosterUrl(savedPoster);
+    if (savedHeroBg) setHeroBgVideo(savedHeroBg);
+
     // 1. Campus
-    // Note: In real app, load from LocalStorage if you want dynamic adds here too
     const campusItems: FeedItem[] = campusAlbums.map(a => ({ type: 'campus', data: a }));
     // 2. Adventure
     const adventureItems: FeedItem[] = adventureAlbums.map(a => ({ type: 'adventure', data: a }));
@@ -42,11 +65,7 @@ const Journal: React.FC = () => {
     let knowledgeItems: FeedItem[] = [];
     if (savedKnowledge) {
         knowledgeItems = (JSON.parse(savedKnowledge) as KnowledgeItem[]).map(k => ({ type: 'knowledge', data: k }));
-    } else {
-        knowledgeItems = [
-            { type: 'knowledge', data: { id: 'k1', title: 'React Hooks 深度解析', content: 'UseEffect 的依赖数组陷阱...', date: '2023.10.01', category: '科技', tags: ['Tech'], likes: 12 } }
-        ];
-    }
+    } 
 
     // Merge and Sort by Date (Descending)
     const allItems = [...campusItems, ...adventureItems, ...knowledgeItems].sort((a, b) => {
@@ -54,6 +73,8 @@ const Journal: React.FC = () => {
     });
 
     setFeed(allItems);
+
+    return () => window.removeEventListener('adminChange', checkAdmin);
   }, []);
 
   const handlePlayVideo = () => {
@@ -67,6 +88,47 @@ const Journal: React.FC = () => {
       setShowVideo(false);
       setIsVideoPlaying(false);
   }
+
+  // --- Intro Video Config ---
+  const openConfigModal = () => {
+      setTempVideoUrl(introVideoUrl);
+      setTempPosterUrl(introPosterUrl);
+      setIsEditingConfig(true);
+  }
+
+  const saveConfig = () => {
+      if (tempVideoUrl) {
+          setIntroVideoUrl(tempVideoUrl);
+          localStorage.setItem('site_intro_video', tempVideoUrl);
+      }
+      if (tempPosterUrl) {
+          setIntroPosterUrl(tempPosterUrl);
+          localStorage.setItem('site_intro_poster', tempPosterUrl);
+      }
+      setIsEditingConfig(false);
+      alert("个人展示视频已更新！");
+  }
+
+  // --- Hero Background Config ---
+  const handleSaveHero = () => {
+      if(newHeroUrl) {
+          setHeroBgVideo(newHeroUrl);
+          localStorage.setItem('site_config_journal_hero', newHeroUrl);
+      }
+      setIsEditingHero(false);
+  };
+
+  const handleLocalFileSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'hero' | 'intro') => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const localUrl = URL.createObjectURL(file);
+          if (target === 'hero') {
+              setNewHeroUrl(localUrl); // Just set the input, let user click save
+          } else {
+              setTempVideoUrl(localUrl);
+          }
+      }
+  };
 
   // -- DETAIL VIEW SUB-COMPONENT --
   if (selectedItem) {
@@ -163,7 +225,71 @@ const Journal: React.FC = () => {
   // -- MAIN LIST VIEW --
   return (
     <div className="w-full">
-      {/* Video Modal (Full Screen) */}
+      
+      {/* Edit INTRO Config Modal */}
+      {isEditingConfig && (
+          <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white w-full max-w-md p-6 rounded-2xl">
+                  <h3 className="text-xl font-black mb-4 uppercase">配置个人展示视频</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">视频链接 (.mp4)</label>
+                          <input 
+                            value={tempVideoUrl} 
+                            onChange={e => setTempVideoUrl(e.target.value)} 
+                            className="w-full p-2 bg-gray-100 rounded border border-transparent focus:border-black outline-none text-sm"
+                            placeholder="https://..."
+                          />
+                          <div className="mt-2">
+                              <label className="block text-xs font-bold text-blue-600 mb-1 cursor-pointer hover:underline">
+                                  + 选择本地视频 (临时预览)
+                                  <input type="file" accept="video/mp4" className="hidden" onChange={(e) => handleLocalFileSelect(e, 'intro')} />
+                              </label>
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">封面图片链接</label>
+                          <input 
+                            value={tempPosterUrl} 
+                            onChange={e => setTempPosterUrl(e.target.value)} 
+                            className="w-full p-2 bg-gray-100 rounded border border-transparent focus:border-black outline-none text-sm"
+                            placeholder="https://..."
+                          />
+                      </div>
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-6">
+                      <button onClick={() => setIsEditingConfig(false)} className="px-4 py-2 text-gray-500 font-bold text-sm">取消</button>
+                      <button onClick={saveConfig} className="px-4 py-2 bg-black text-white rounded font-bold text-sm">保存</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Edit HERO BACKGROUND Modal */}
+      {isEditingHero && (
+           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-black">
+               <div className="bg-white p-6 rounded-2xl w-full max-w-md">
+                   <h3 className="text-xl font-bold mb-4">更换首页背景视频</h3>
+                   <p className="text-xs text-gray-500 mb-2">请输入 .mp4 视频链接</p>
+                   <input value={newHeroUrl} onChange={e => setNewHeroUrl(e.target.value)} placeholder="https://..." className="w-full p-3 bg-gray-100 rounded-lg mb-2" />
+                   
+                   <div className="mb-6">
+                      <label className="block text-xs font-bold text-blue-600 cursor-pointer hover:underline">
+                          + 或者选择本地视频 (仅供临时演示)
+                          <input type="file" accept="video/mp4" className="hidden" onChange={(e) => handleLocalFileSelect(e, 'hero')} />
+                      </label>
+                      <p className="text-[10px] text-gray-400 mt-1">注意：本地视频在网页刷新后会失效。长期使用请填写URL。</p>
+                   </div>
+
+                   <div className="flex justify-end gap-2">
+                       <button onClick={() => setIsEditingHero(false)} className="px-4 py-2 text-gray-500">取消</button>
+                       <button onClick={handleSaveHero} className="px-4 py-2 bg-black text-white rounded-lg font-bold">保存</button>
+                   </div>
+               </div>
+           </div>
+       )}
+
+      {/* Video Modal (Full Screen Player) */}
       {showVideo && (
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center animate-fade-in">
             <button 
@@ -181,7 +307,7 @@ const Journal: React.FC = () => {
                         onClick={handlePlayVideo}
                     >
                         {/* Poster Image */}
-                        <img src={MY_INTRO_POSTER} className="absolute inset-0 w-full h-full object-contain opacity-80" alt="Cover" />
+                        <img src={introPosterUrl} className="absolute inset-0 w-full h-full object-contain opacity-80" alt="Cover" />
                         
                         {/* Play Button */}
                         <div className="relative z-30 w-24 h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center group-hover:scale-110 transition-transform border border-white/50">
@@ -192,7 +318,7 @@ const Journal: React.FC = () => {
                 
                 <video 
                     ref={videoRef}
-                    src={MY_INTRO_VIDEO} 
+                    src={introVideoUrl} 
                     controls 
                     className="w-full h-full object-contain"
                     disablePictureInPicture
@@ -205,35 +331,55 @@ const Journal: React.FC = () => {
       )}
 
       {/* Hero Section with Video Background */}
-      <div className="relative w-full h-[80vh] bg-gray-100 flex flex-col justify-end pb-12 px-6 md:px-12 mb-12 overflow-hidden rounded-b-[3rem]">
+      <div className="relative w-full h-[80vh] bg-gray-100 flex flex-col justify-end pb-12 px-6 md:px-12 mb-12 overflow-hidden rounded-b-[3rem] group">
         <div className="absolute inset-0 z-0">
              <video 
                 autoPlay 
                 loop 
                 muted 
                 playsInline
-                className="w-full h-full object-cover grayscale opacity-60"
+                className="w-full h-full object-cover opacity-90"
              >
-                <source src={HERO_BG_VIDEO} type="video/mp4" />
+                <source src={heroBgVideo} type="video/mp4" />
              </video>
-             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+             {/* Slightly darker overlay to ensure text readability on original color video */}
+             <div className="absolute inset-0 bg-black/40"></div>
         </div>
         
+        {/* Admin Edit Trigger for Hero Background */}
+        {isAdmin && (
+             <button onClick={() => setIsEditingHero(true)} className="absolute top-4 right-4 z-50 bg-white text-black px-4 py-2 rounded-full font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-lg">
+                 更换背景视频
+             </button>
+        )}
+        
         <div className="relative z-10 max-w-4xl">
-            <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-4 drop-shadow-lg">
+            <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-4 drop-shadow-2xl">
               我的世界<br/>即刻创造
             </h1>
-            <p className="text-white text-lg md:text-xl font-medium mb-8 max-w-xl drop-shadow-md">
+            <p className="text-white text-lg md:text-xl font-medium mb-8 max-w-xl drop-shadow-lg text-shadow">
                探索科技、设计与日常生活的边界。这里是小田的数字花园，记录每一个值得铭记的瞬间。
             </p>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 items-center">
                 <button 
                     onClick={() => setShowVideo(true)}
-                    className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors flex items-center"
+                    className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors flex items-center shadow-lg"
                 >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     开始浏览
                 </button>
+                
+                {/* Admin Config Button (For Intro Video) */}
+                {isAdmin && (
+                    <button 
+                        onClick={openConfigModal}
+                        className="w-12 h-12 bg-black/50 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-black hover:text-green-400 transition-all border border-white/20"
+                        title="配置介绍视频"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                )}
+
                 <Link 
                     to="/profile"
                     className="bg-transparent border border-white text-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition-colors"

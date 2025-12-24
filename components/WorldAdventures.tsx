@@ -3,7 +3,8 @@ import { adventureAlbums as initialMockData } from '../data/mockData';
 import { Album } from '../types';
 import { fileToBase64 } from '../utils/audioUtils';
 
-const DEFAULT_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4";
+// CHANGED: Use a travel/nature oriented video (ForBiggerEscapes)
+const DEFAULT_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
 
 const WorldAdventures: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -60,6 +61,14 @@ const WorldAdventures: React.FC = () => {
           localStorage.setItem('site_config_world_video', newHeroUrl);
       }
       setIsEditingHero(false);
+  };
+  
+  const handleLocalVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const url = URL.createObjectURL(file);
+          setNewHeroUrl(url);
+      }
   };
 
   const getLikes = (album: Album) => {
@@ -173,8 +182,8 @@ const WorldAdventures: React.FC = () => {
       {/* Hero */}
       <div className="relative h-[50vh] flex flex-col justify-center items-center text-center overflow-hidden rounded-b-[3rem] group">
          <div className="absolute inset-0 z-0">
-             <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-50" src={heroVideo} key={heroVideo} />
-             <div className="absolute inset-0 bg-black/60"></div>
+             <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-90" src={heroVideo} key={heroVideo} />
+             <div className="absolute inset-0 bg-black/40"></div>
         </div>
         
         {isAdmin && (
@@ -195,7 +204,16 @@ const WorldAdventures: React.FC = () => {
                <div className="bg-white p-6 rounded-2xl w-full max-w-md">
                    <h3 className="text-xl font-bold mb-4">更换背景视频</h3>
                    <p className="text-xs text-gray-500 mb-2">请输入 .mp4 视频链接</p>
-                   <input value={newHeroUrl} onChange={e => setNewHeroUrl(e.target.value)} placeholder="https://..." className="w-full p-3 bg-gray-100 rounded-lg mb-4" />
+                   <input value={newHeroUrl} onChange={e => setNewHeroUrl(e.target.value)} placeholder="https://..." className="w-full p-3 bg-gray-100 rounded-lg mb-2" />
+                   
+                   <div className="mb-4">
+                      <label className="block text-xs font-bold text-blue-600 cursor-pointer hover:underline">
+                          + 或者选择本地视频 (仅供临时演示)
+                          <input type="file" accept="video/mp4" className="hidden" onChange={handleLocalVideoSelect} />
+                      </label>
+                      <p className="text-[10px] text-gray-400 mt-1">注意：本地视频在网页刷新后会失效。长期使用请填写URL。</p>
+                   </div>
+
                    <div className="flex justify-end gap-2">
                        <button onClick={() => setIsEditingHero(false)} className="px-4 py-2 text-gray-500">取消</button>
                        <button onClick={handleSaveHero} className="px-4 py-2 bg-black text-white rounded-lg font-bold">保存</button>
