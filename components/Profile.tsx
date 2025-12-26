@@ -20,7 +20,7 @@ const DEFAULT_PROFILE: ProfileData = {
   university: '东南大学 (SEU)',
   major: '集成电路工程',
   location: '中国 · 南京',
-  email: '230249472@seu.edu.cn',
+  email: '', // 已清空默认邮箱
   intro: "你好，我是小田。\n\n一名就读于东南大学集成电路工程专业的研究生。在代码逻辑与硅片纹理之间，我也是一名热衷于探索世界的开发者与创作者。\n\n我相信技术（IC/AI）与艺术的结合能创造出最动人的叙事。",
   skills: ['Verilog', 'FPGA', 'Python', 'React', 'Photography', 'AI/LLM'],
   awards: [
@@ -134,17 +134,30 @@ const Profile: React.FC = () => {
               
               <div className="flex flex-col space-y-3 text-sm font-bold text-gray-500 md:items-end tracking-wide">
                   <div className="flex items-center justify-center md:justify-end w-full">
-                      {isEditing ? <input value={data.university} onChange={e => setData({...data, university: e.target.value})} className="border-b text-right w-full" /> : <span>{data.university}</span>}
+                      {isEditing ? <input value={data.university} onChange={e => setData({...data, university: e.target.value})} className="border-b text-right w-full" placeholder="学校" /> : <span>{data.university}</span>}
                   </div>
                   <div className="flex items-center justify-center md:justify-end w-full">
-                      {isEditing ? <input value={data.major} onChange={e => setData({...data, major: e.target.value})} className="border-b text-right w-full" /> : <span>{data.major}</span>}
+                      {isEditing ? <input value={data.major} onChange={e => setData({...data, major: e.target.value})} className="border-b text-right w-full" placeholder="专业" /> : <span>{data.major}</span>}
                   </div>
                    <div className="flex items-center justify-center md:justify-end w-full">
-                      {isEditing ? <input value={data.location} onChange={e => setData({...data, location: e.target.value})} className="border-b text-right w-full" /> : <span>{data.location}</span>}
+                      {isEditing ? <input value={data.location} onChange={e => setData({...data, location: e.target.value})} className="border-b text-right w-full" placeholder="位置" /> : <span>{data.location}</span>}
                   </div>
-                  <div className="flex items-center justify-center md:justify-end w-full">
-                      {isEditing ? <input value={data.email} onChange={e => setData({...data, email: e.target.value})} className="border-b text-right w-full" /> : <a href={`mailto:${data.email}`} className="hover:text-black hover:underline">{data.email}</a>}
-                  </div>
+                  
+                  {/* Conditional Render for Email: Only show if editing OR if email is not empty */}
+                  {(isEditing || data.email) && (
+                    <div className="flex items-center justify-center md:justify-end w-full">
+                        {isEditing ? (
+                            <input 
+                                value={data.email} 
+                                onChange={e => setData({...data, email: e.target.value})} 
+                                className="border-b text-right w-full" 
+                                placeholder="邮箱 (留空隐藏)" 
+                            />
+                        ) : (
+                            <a href={`mailto:${data.email}`} className="hover:text-black hover:underline">{data.email}</a>
+                        )}
+                    </div>
+                  )}
               </div>
 
               <div className="mt-8 flex justify-center md:justify-end space-x-4 pt-6 border-t border-gray-100">
