@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] 
+    branches: ["main"]  # 👈 确保这里是 main
 
 permissions:
   contents: read
@@ -41,8 +41,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: './dist' # 👈 这里确保是你打包生成的文件夹名字，Vite 默认是 dist
+          path: './dist'
           
       - name: Deploy to GitHub Pages
         id: deployment
